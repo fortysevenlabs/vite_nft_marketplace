@@ -16,6 +16,7 @@ const startingBid = '1';
 
 describe('test NFT', function () {
   before(async function () {
+    // provider and account setup
     provider = vite.newProvider(config.networks.local.http);
     deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider);
     console.log("deployer", deployer.address);
@@ -25,7 +26,6 @@ describe('test NFT', function () {
     expect(compiledNFTContracts).to.have.property("NFT");
     
     // deploy an NFT contract
-    // need to pass params to deploy
     nftContract = compiledNFTContracts.NFT;
     nftContract.setDeployer(deployer).setProvider(provider);
     await nftContract.deploy({params: ["ViteTestingToken", "VITE"], responseLatency: 1});
@@ -41,7 +41,6 @@ describe('test NFT', function () {
     expect(compiledEnglishAuctionContracts).to.have.property("EnglishAuction");
 
     // deploy an englishAuction contract
-    // need to pass params to deploy
     englishAuctionContract = compiledNFTContracts.NFT;
     englishAuctionContract.setDeployer(deployer).setProvider(provider);
     await englishAuctionContract.deploy({ params: [nftContract.address, firstTokenId, 1] });
