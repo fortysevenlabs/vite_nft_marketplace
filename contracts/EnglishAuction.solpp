@@ -12,6 +12,7 @@ contract EnglishAuction {
     IERC721 public nft;
     uint public nftId;
 
+    address public contractAddr;
     address payable public seller;
     uint public endAt;
     bool public started;
@@ -31,16 +32,17 @@ contract EnglishAuction {
 
         seller = payable(msg.sender);
         highestBid = _startingBid;
+        contractAddr = address(this);
     }
 
     function start() external {
         require(!started, "started");
         require(msg.sender == seller, "not seller");
 
-        nft.transferFrom(msg.sender, address(this), nftId);
+        nft.transferFrom(msg.sender, contractAddr, nftId);
         started = true;
         endAt = block.timestamp + 7 days;
-
+        
         emit Start();
     }
 
@@ -62,8 +64,8 @@ contract EnglishAuction {
     function withdraw() external {
         uint bal = bids[msg.sender];
         bids[msg.sender] = 0;
-        payable(msg.sender).transfer(bal);
-
+        // update transfer to specify the token being transferred
+        payable(msg.sender).transfer("tti_5649544520544f4b454e6e40", bal);
         emit Withdraw(msg.sender, bal);
     }
 
@@ -75,7 +77,8 @@ contract EnglishAuction {
         ended = true;
         if (highestBidder != address(0)) {
             nft.safeTransferFrom(address(this), highestBidder, nftId);
-            seller.transfer(highestBid);
+            // update transfer to specify the token being transferred
+            seller.transfer("tti_5649544520544f4b454e6e40", highestBid);
         } else {
             nft.safeTransferFrom(address(this), seller, nftId);
         }
