@@ -18,6 +18,10 @@ contract EnglishAuction {
     bool public started;
     bool public ended;
 
+    // TODO
+    // uint public reservePrice;
+    uint public auctionDuration; // endAt = block.timestamp + auctionDuration;
+
     address public highestBidder;
     uint public highestBid;
     mapping(address => uint) public bids;
@@ -25,13 +29,15 @@ contract EnglishAuction {
     constructor(
         address _nft,
         uint _nftId,
-        uint _startingBid
+        uint _startingBid,
+        uint _auctionDuration
     ) {
         nft = IERC721(_nft);
         nftId = _nftId;
 
         seller = payable(msg.sender);
         highestBid = _startingBid;
+        auctionDuration = _auctionDuration;
         contractAddr = address(this);
     }
 
@@ -41,7 +47,7 @@ contract EnglishAuction {
 
         nft.transferFrom(msg.sender, contractAddr, nftId);
         started = true;
-        endAt = block.timestamp + 7 days;
+        endAt = block.timestamp + (auctionDuration * 1 seconds);
         
         emit Start();
     }
@@ -84,5 +90,14 @@ contract EnglishAuction {
         }
 
         emit End(highestBidder, highestBid);
-    }
-}
+    }}
+
+
+    // FIXME: soliditypp + vuilder issues
+    // 1 tests - multiple user accounts are not working, results in abort [Object object] error
+    // 2 tests - revert error is not verbose, unclear what caused the revert
+    // 3 tests - clean environment for tests, calls in one it interfere with calls in another it
+    // 4 tests - some expect(await contract.call()) results in "TypeError: >accountBlockObject> is not thenable"
+    // --------- are call functions promises? typeof x.then === 'function' results in false
+    // --------- not using await for the contract.call() also results in error
+    // 5 tests - query also doesn't return promises

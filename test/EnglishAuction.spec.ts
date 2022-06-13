@@ -6,6 +6,7 @@ use(chaiAsPromised);
 const vite = require('@vite/vuilder');
 import config from "./vite.config.json";
 import { getEnabledCategories } from "trace_events";
+import { deflateSync } from "zlib";
 
 let provider: any;
 let deployer: any;
@@ -16,6 +17,8 @@ let englishAuctionContract: any;
 
 // user accounts
 let seller: any;
+let buyer1: any;
+let buyer2: any;
 let somebody: any;
 
 // NFT details
@@ -23,6 +26,7 @@ const name = 'Vite Testing Token';
 const symbol = 'VITE';
 const nftId = 1010;
 const startingBid = 1;
+const auctionDuration = 1;
 
 describe('test NFT', function () {
     before(async function () {
@@ -33,9 +37,22 @@ describe('test NFT', function () {
 
         // user setup
         seller = vite.newAccount(config.networks.local.mnemonic, 1, provider);
+        await deployer.sendToken(seller.address, '0');
+        await seller.receiveAll();
         console.log("------> seller", seller.address);
-        somebody = vite.newAccount(config.networks.local.mnemonic, 1, provider);
+        buyer1 = vite.newAccount(config.networks.local.mnemonic, 2, provider);
+        await deployer.sendToken(buyer1.address, '0');
+        await buyer1.receiveAll();
+        console.log("------> buyer1", buyer1.address);
+        buyer2 = vite.newAccount(config.networks.local.mnemonic, 3, provider);
+        await deployer.sendToken(buyer2.address, '0');
+        await buyer2.receiveAll();
+        console.log("------> buyer2", buyer2.address);
+        somebody = vite.newAccount(config.networks.local.mnemonic, 4, provider);
+        await deployer.sendToken(somebody.address, '0');
+        await somebody.receiveAll();
         console.log("------> somebody", somebody.address);
+
 
         // compile NFT contract
         const compiledNFTContracts = await vite.compile("NFT.solpp");
@@ -60,7 +77,7 @@ describe('test NFT', function () {
         // deploy an englishAuction contract
         englishAuctionContract = compiledEnglishAuctionContracts.EnglishAuction;
         englishAuctionContract.setDeployer(deployer).setProvider(provider);
-        await englishAuctionContract.deploy({ params: [nftContract.address, nftId, startingBid], responseLatency: 1 });
+        await englishAuctionContract.deploy({ params: [nftContract.address, nftId, startingBid, auctionDuration], responseLatency: 1 });
         expect(englishAuctionContract.address).to.be.a("string");
         console.log("------> English Auction Contract", englishAuctionContract.address);
     });
@@ -106,4 +123,67 @@ describe('test NFT', function () {
             expect(events).to.be.an('array').with.length(1);
         });
     });
+
+    describe("bid", () => {
+        it("should revert bid if auction has not yet started", async () => {
+            // TODO: assertion fails even though output is as expected with "Error: revert"
+            expect(await englishAuctionContract.call('bid', [], {caller: deployer})).to.eventually.be.rejectedWith("revert");
+        });
+
+        it("should revert bid if auction has already ended", async () => {
+            await englishAuctionContract.call('start', [], {caller: deployer});
+            // TODO: need to set custom auctionDuration (1 second) to be able to immediately end
+            // TODO: verify end() doesn't revert in end tests
+            await englishAuctionContract.call('end', [], {caller: deployer});
+           // TODO: assertion fails even though output is as expected with "Error: revert"
+            expect(await englishAuctionContract.call('bid', [], {caller: deployer})).to.eventually.be.rejectedWith("revert");
+        });
+
+        it("should revert if bid amount is lower than current highest bid", async () => {
+            await englishAuctionContract.call('start', [], {caller: deployer});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: "200"});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: "300"});
+           // TODO: assertion fails even though output is as expected with "Error: revert"
+            expect(await englishAuctionContract.call('bid', [], {caller: deployer, amount: "100"})).to.eventually.be.rejectedWith("revert");
+        });
+
+        it("should update the highest bidder and highest bid amount", async () => {
+            const firstHighestBid = "100";
+            const seconddHighestBid = "100";
+            await englishAuctionContract.call('start', [], {caller: deployer});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: firstHighestBid});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: seconddHighestBid});
+            expect(await englishAuctionContract.query('highestBid')).to.be.deep.equal([seconddHighestBid]);
+            expect(await englishAuctionContract.query('highestBidder')).to.be.deep.equal([deployer.address]);
+        });
+
+        it("should emit a bid event", async () => {
+            await englishAuctionContract.call('start', [], {caller: deployer});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: "100"});
+            let events = await englishAuctionContract.getPastEvents('Bid', {fromHeight: 0, toHeight: 0});
+            expect(events).to.be.an('array').with.length(1);
+        });
+
+        it("should update bids value for multiple bids from a buyer", async () => {
+            await englishAuctionContract.call('start', [], {caller: deployer});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: "230"});
+            await englishAuctionContract.call('bid', [], {caller: deployer, amount: "310"});
+            // TODO: fails, tried both chai assertion and chai-as-promise assertion
+            // chai assertion: the "bids[deployer.address]" doesn't update until some time (result = 230 instead of 540) likely related to vuilder bug
+            expect(await englishAuctionContract.query('bids', [deployer.address], {caller: deployer})).to.be.deep.equal(["540"]);
+            // chai-as-promise assertion: query is not promise so this test doesn't work
+            expect(await englishAuctionContract.query('bids', [deployer.address], {caller: deployer})).to.eventually.be.equal(["540"]);
+        });
+
+    });
+
+    // describe("withdraw", () => {
+    //     it("should emit a withdraw event", async () => {
+    //         await englishAuctionContract.call('withdraw', [], {caller: seller})
+    //     });
+    // });
+
+    // describe("end", () => {
+        // it("should", async () => {});
+    // });
 });
