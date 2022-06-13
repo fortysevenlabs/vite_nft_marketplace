@@ -100,4 +100,5 @@ contract EnglishAuction {
     // 4 tests - some expect(await contract.call()) results in "TypeError: >accountBlockObject> is not thenable"
     // --------- are call functions promises? typeof x.then === 'function' results in false
     // --------- not using await for the contract.call() also results in error
-    // 5 tests - query also doesn't return promises
+    // 5 tests - query also doesn't return promises in some cases
+    // 6 transfer - transfer and transferFrom within contract functions doesn't work
