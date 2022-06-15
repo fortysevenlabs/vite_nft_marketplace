@@ -157,6 +157,7 @@ describe('test NFT', function () {
             await expect(englishAuctionContract.call('bid', [], {caller: buyer1, amount: "100"})).to.be.rejectedWith("revert");
         });
 
+        // TODO
         // it("should revert bid if auction duration has already passed", async () => {
         // });
 
@@ -223,6 +224,7 @@ describe('test NFT', function () {
             expect(await englishAuctionContract.balance()).to.be.deep.equal((Number(firstBid) + Number(secondBid)).toString());
             expect(await buyer1.balance()).to.be.deep.equal((BigInt(preBidBuyer1Balance) - BigInt(firstBid)).toString());
 
+            // TODO: withdraw involves a transfer, this fails
             // withdraw bid
             console.log(await buyer1.balance());
             await englishAuctionContract.call('withdraw', [], {caller: buyer1});
@@ -245,12 +247,10 @@ describe('test NFT', function () {
         });
     });
 
-    // TODO: deploy englishAuction contract with auctionDuration = 1s
     describe("end", () => {
         it("should revert if auction has not yet started", async () => {
             const englishAuctionContract = await deployEnglishAuction(1)
 
-            // TODO: assertion fails even though output is as expected with "Error: revert"
             await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
@@ -258,11 +258,8 @@ describe('test NFT', function () {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            // TODO: need to ensure custom auctionDuration (1 second)
             await new Promise(r => setTimeout(r, 2000));
-            // TODO: verify end() doesn't revert in end tests
             await englishAuctionContract.call('end', [], {caller: somebody});
-            // TODO: assertion fails even though output is as expected with "Error: revert"
             await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
@@ -270,10 +267,8 @@ describe('test NFT', function () {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            // TODO: need to set custom auctionDuration (1 second)
             await new Promise(r => setTimeout(r, 2000));
             await englishAuctionContract.call('end', [], {caller: somebody});
-            // TODO: assertion fails even though output is as expected with "Error: revert"
             await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
@@ -300,6 +295,7 @@ describe('test NFT', function () {
             // expect(await buyer1.balance())
             // expect(await buyer2.balance())
 
+            // TODO: end involves a transfer, fails
             await englishAuctionContract.call('end', [], {caller: somebody});
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([buyer2.address]);
             // check balances
@@ -316,6 +312,7 @@ describe('test NFT', function () {
             await englishAuctionContract.call('start', [], {caller: seller});
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([englishAuctionContract.address]);
 
+            // TODO: end involves a transfer, fails
             await englishAuctionContract.call('end', [], {caller: somebody});
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([seller.address]);
         });
