@@ -68,6 +68,7 @@ contract EnglishAuction {
     }
 
     function withdraw() external {
+        // require(bids[msg.sender] > 0, "No bid that is not the highestBid");
         uint bal = bids[msg.sender];
         bids[msg.sender] = 0;
         // update transfer to specify the token being transferred
@@ -90,13 +91,12 @@ contract EnglishAuction {
         }
 
         emit End(highestBidder, highestBid);
-    }}
+    }
+}
 
 
     // FIXME: soliditypp + vuilder issues
-    // 1 tests - multiple user accounts are not working, results in abort [Object object] error
     // 2 tests - revert error is not verbose, unclear what caused the revert
-    // 3 tests - clean environment for tests, calls in one it interfere with calls in another it
     // 4 tests - some expect(await contract.call()) results in "TypeError: >accountBlockObject> is not thenable"
     // --------- are call functions promises? typeof x.then === 'function' results in false
     // --------- not using await for the contract.call() also results in error
