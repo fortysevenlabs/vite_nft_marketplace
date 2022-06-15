@@ -115,7 +115,7 @@ describe('test NFT', function () {
             // approve englishAuctionContract to call transferFrom
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([seller.address])
             await nftContract.call('approve', [englishAuctionContract.address, nftId], {caller: seller});
-            expect(await nftContract.query("getApproved", [nftId])).to.be.deep.equal([englishAuctionContract.address])
+            expect(await nftContract.query("getApproved", [nftId])).to.be.deep.equal([englishAuctionContract.address]);
             console.log(await nftContract.query('ownerOf', [nftId]));
             console.log(await nftContract.query('getApproved', [nftId]));
 
