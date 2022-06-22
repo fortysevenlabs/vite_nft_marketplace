@@ -25,9 +25,8 @@ let somebody: any;
 const name = 'Vite Testing Token';
 const symbol = 'VITE';
 const nftId = 1010;
-const startingBid = 1;
 
-describe('test NFT', function () {
+describe('test EnglishAuction', function () {
     before(async function () {
         // provider and account setup
         provider = vite.newProvider(config.networks.local.http);
@@ -79,7 +78,7 @@ describe('test NFT', function () {
     // compile english contract
     // using a function instead of beforeEach so that we can pass custom params to constructor
     // note that mocha treats test failures and hook failures differently
-    async function deployEnglishAuction(auctionDuration:number=86400) {
+    async function deployEnglishAuction(duration:number=86400, reservePrice:number=1, minBidIncrementPercentage:number=50) {
         // compile English Auction contract
         const compiledEnglishAuctionContracts = await vite.compile("EnglishAuction.solpp");
         expect(compiledEnglishAuctionContracts).to.have.property("EnglishAuction");
@@ -87,7 +86,7 @@ describe('test NFT', function () {
         // deploy an englishAuction contract
         englishAuctionContract = compiledEnglishAuctionContracts.EnglishAuction;
         englishAuctionContract.setDeployer(seller).setProvider(provider);
-        await englishAuctionContract.deploy({ params: [nftContract.address, nftId, startingBid, auctionDuration], responseLatency: 1 });
+        await englishAuctionContract.deploy({ params: [nftContract.address, nftId, reservePrice, minBidIncrementPercentage, duration], responseLatency: 1 });
         expect(englishAuctionContract.address).to.be.a("string");
         console.log("------> English Auction Contract", englishAuctionContract.address);
 
@@ -137,170 +136,145 @@ describe('test NFT', function () {
             const englishAuctionContract = await deployEnglishAuction();
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            // TODO: better way to test this?
-            expect(await englishAuctionContract.query('endAt')).to.not.be.deep.equal(["0"]);
+            // TODO: better way to test this since we can't log block.timestamp during start call?
+            expect(await englishAuctionContract.query('endTime')).to.not.be.deep.equal(["0"]);
         });
 
-        it("should emit a start event", async () => {
+        it("should emit a AuctionStarted event", async () => {
             const englishAuctionContract = await deployEnglishAuction();
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            let events = await englishAuctionContract.getPastEvents('Start', {fromHeight: 0, toHeight: 0});
+            let events = await englishAuctionContract.getPastEvents('AuctionStarted', {fromHeight: 0, toHeight: 0});
             expect(events).to.be.an('array').with.length(1);
         });
     });
 
     describe("bid", () => {
-        it("should revert bid if auction has not yet started", async () => {
+        it("should revert bid if auction has not started", async () => {
             const englishAuctionContract = await deployEnglishAuction();
 
             await expect(englishAuctionContract.call('bid', [], {caller: buyer1, amount: "100"})).to.be.rejectedWith("revert");
         });
 
-        // TODO
-        // it("should revert bid if auction duration has already passed", async () => {
-        // });
+        it("should revert bid if auction has ended", async () => {
+            const englishAuctionContract = await deployEnglishAuction(1);
 
-        it("should revert if bid amount is lower than current highest bid", async () => {
+            await englishAuctionContract.call('start', [], {caller: seller});
+            await new Promise(r => setTimeout(r, 2000));
+            await expect(englishAuctionContract.call('bid', [], {caller: buyer1, amount: "100"})).to.be.rejectedWith("revert");
+        });
+
+        it("should revert if bid amount is lower than current highestBid by minBidIncrementPercentage", async () => {
             const englishAuctionContract = await deployEnglishAuction();
 
             await englishAuctionContract.call('start', [], {caller: seller});
             await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "200"});
-            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: "300"});
-            await expect(englishAuctionContract.call('bid', [], {caller: buyer1, amount: "100"})).to.be.rejectedWith("revert");
+            await expect(englishAuctionContract.call('bid', [], {caller: buyer1, amount: "250"})).to.be.rejectedWith("revert");     // minBidIncrementPercentage default is 50%
         })
 
         it("should update the highest bidder and highest bid amount for successful bid", async () => {
             const englishAuctionContract = await deployEnglishAuction();
             const firstHighestBid = "100";
-            const seconddHighestBid = "200";
+            const secondHighestBid = "200";
 
             await englishAuctionContract.call('start', [], {caller: seller});
             await englishAuctionContract.call('bid', [], {caller: buyer1, amount: firstHighestBid});
-            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: seconddHighestBid});
-            expect(await englishAuctionContract.query('highestBid')).to.be.deep.equal([seconddHighestBid]);
+            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: secondHighestBid});
+            expect(await englishAuctionContract.query('highestBid')).to.be.deep.equal([secondHighestBid]);
             expect(await englishAuctionContract.query('highestBidder')).to.be.deep.equal([buyer2.address]);
         });
 
-        it("should update the refund amount when a bidder's bid is no longer highestBid", async () => {
+        it("should refund the prevHighestBidder when a new highestBid is made", async () => {
             const englishAuctionContract = await deployEnglishAuction();
+            const firstHighestBid = "100";
+            const secondHighestBid = "200";
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "230"});
-            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "310"});
-            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "360"});
-            expect(await englishAuctionContract.query('bids', [buyer1.address])).to.be.deep.equal(["540"]);
+            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: firstHighestBid});
+            expect(await englishAuctionContract.balance()).to.be.deep.equal(firstHighestBid);
+            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: secondHighestBid});
+            expect(await englishAuctionContract.balance()).to.be.deep.equal(secondHighestBid);
+            // TODO FIX: transfers fail - debit from contract works, credit to buyer1 fails
+            expect(await buyer1.balance()).to.be.deep.equal('1000000000000000000000000');
+            expect(await buyer2.balance()).to.be.deep.equal('999999999999999999999800');
         });
 
-        it("should emit a bid event", async () => {
+        it("should emit a AuctionBid event", async () => {
             const englishAuctionContract = await deployEnglishAuction();
 
             await englishAuctionContract.call('start', [], {caller: seller});
             await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "100"});
-            let events = await englishAuctionContract.getPastEvents('Bid', {fromHeight: 0, toHeight: 0});
+            let events = await englishAuctionContract.getPastEvents('AuctionBid', {fromHeight: 0, toHeight: 0});
             expect(events).to.be.an('array').with.length(1);
         });
    });
 
-    describe("withdraw", () => {
-        // it ("should revert if bidder doesn't have bids that are not highestBidder", async () => {});
-
-        it("should update bidder balance to 0 and transfer amount", async () => {
-            const englishAuctionContract = await deployEnglishAuction();
-
-            const firstBid = "100";
-            const secondBid = "200";
-
-            // start auction
-            await englishAuctionContract.call('start', [], {caller: seller});
-
-            // bid
-            const preBidBuyer1Balance = await buyer1.balance();
-            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: firstBid});
-            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: secondBid});
-
-            // check post-bid, pre-withrdrawal balances
-            expect(await englishAuctionContract.query('bids', [buyer1.address], {caller: buyer1})).to.be.deep.equal([firstBid]);
-            expect(await englishAuctionContract.balance()).to.be.deep.equal((Number(firstBid) + Number(secondBid)).toString());
-            expect(await buyer1.balance()).to.be.deep.equal((BigInt(preBidBuyer1Balance) - BigInt(firstBid)).toString());
-
-            // TODO: withdraw involves a transfer, this fails
-            // withdraw bid
-            console.log(await buyer1.balance());
-            await englishAuctionContract.call('withdraw', [], {caller: buyer1});
-            console.log(await buyer1.balance());
-
-            console.log("before final expects");
-
-            // check post-withdrawal balances
-            expect(await englishAuctionContract.query('bids', [buyer1.address], {caller: deployer})).to.be.deep.equal(["0"]);
-            expect(await englishAuctionContract.balance()).to.be.deep.equal(secondBid);
-            expect(await buyer1.balance()).to.be.deep.equal(preBidBuyer1Balance);
-        });
-
-        it("should emit a withdraw event", async () => {
-            const englishAuctionContract = await deployEnglishAuction();
-
-            await englishAuctionContract.call('withdraw', [], {caller: deployer});
-            let events = await englishAuctionContract.getPastEvents('Withdraw', {fromHeight: 0, toHeight: 0});
-            expect(events).to.be.an('array').with.length(1);
-        });
-    });
-
-    describe("end", () => {
-        it("should revert if auction has not yet started", async () => {
+    describe("settle", () => {
+        it("should revert if auction has not started", async () => {
             const englishAuctionContract = await deployEnglishAuction(1)
 
-            await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
+            await expect(englishAuctionContract.call('settle', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
-        it("should revert if auction duration has not yet passed", async () => {
+        it("should revert if auction has not ended", async () => {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
             await new Promise(r => setTimeout(r, 2000));
-            await englishAuctionContract.call('end', [], {caller: somebody});
-            await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
+            await englishAuctionContract.call('settle', [], {caller: somebody});
+            await expect(englishAuctionContract.call('settle', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
-        it("should revert if auction has already ended", async () => {
+        it("should revert if auction has already settled", async () => {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
             await new Promise(r => setTimeout(r, 2000));
-            await englishAuctionContract.call('end', [], {caller: somebody});
-            await expect(englishAuctionContract.call('end', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
+            await englishAuctionContract.call('settle', [], {caller: somebody});
+            await expect(englishAuctionContract.call('settle', [], {caller: somebody})).to.eventually.be.rejectedWith("revert");
         });
 
-        it("should update auction ended to true", async () => {
+        it("should update auction settled to true", async () => {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            await englishAuctionContract.call('end', [], {caller: somebody});
-            expect(await englishAuctionContract.query('ended', [], {caller: somebody})).to.be.deep.equal(["1"]);
+            await englishAuctionContract.call('settle', [], {caller: somebody});
+            expect(await englishAuctionContract.query('settled', [], {caller: somebody})).to.be.deep.equal(["1"]);
         });
 
         it("should transfer NFT to highestBidder and transfer highestBid to seller", async () => {
-            const englishAuctionContract = await deployEnglishAuction(1);
+            const englishAuctionContract = await deployEnglishAuction(5);
+            const firstHighestBid = "100";
+            const secondHighestBid = "200";
 
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([seller.address]);
 
             await englishAuctionContract.call('start', [], {caller: seller});
+            // TODO FIX: transfer fails
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([englishAuctionContract.address]);
 
-            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: "200"});
-            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: "300"});
-            // check balances
-            // expect( await englishAuctionContract.balance())
-            // expect(await buyer1.balance())
-            // expect(await buyer2.balance())
+            await englishAuctionContract.call('bid', [], {caller: buyer1, amount: firstHighestBid});
+            expect(await englishAuctionContract.balance()).to.be.deep.equal(firstHighestBid);
+            expect(await buyer1.balance()).to.be.deep.equal('999999999999999999999900');
+            expect(await seller.balance()).to.be.deep.equal('TBD');
 
-            // TODO: end involves a transfer, fails
-            await englishAuctionContract.call('end', [], {caller: somebody});
+            await englishAuctionContract.call('bid', [], {caller: buyer2, amount: secondHighestBid});
+            expect(await englishAuctionContract.balance()).to.be.deep.equal(secondHighestBid);
+            expect(await buyer1.balance()).to.be.deep.equal('1000000000000000000000000');
+            expect(await buyer2.balance()).to.be.deep.equal('999999999999999999999800');
+            expect(await seller.balance()).to.be.deep.equal('TBD');
+
+            // wait for auction to end and then call settle
+            await new Promise(r => setTimeout(r, 5000));
+            await englishAuctionContract.call('settle', [], {caller: somebody});
+
+            // TODO FIX: transfer fails
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([buyer2.address]);
-            // check balances
-            // expect(await englishAuctionContract.balance())
-            // expect(await buyer1.balance())
+            // TODO FIX: transfer fails - debit from contract works, credit to buyer1 fails
+            expect(await buyer1.balance()).to.be.deep.equal('1000000000000000000000000');
+            expect(await buyer2.balance()).to.be.deep.equal('999999999999999999999800');
+            expect(await seller.balance()).to.be.deep.equal('TBD');
+            expect(await englishAuctionContract.balance()).to.be.deep.equal('0');
 
         });
 
@@ -312,17 +286,17 @@ describe('test NFT', function () {
             await englishAuctionContract.call('start', [], {caller: seller});
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([englishAuctionContract.address]);
 
-            // TODO: end involves a transfer, fails
-            await englishAuctionContract.call('end', [], {caller: somebody});
+            // TODO: settle involves a transfer, fails
+            await englishAuctionContract.call('settle', [], {caller: somebody});
             expect(await nftContract.query("ownerOf", [nftId])).to.be.deep.equal([seller.address]);
         });
 
-        it("should emit an End event", async () => {
+        it("should emit an AuctionSettled event", async () => {
             const englishAuctionContract = await deployEnglishAuction(1);
 
             await englishAuctionContract.call('start', [], {caller: seller});
-            await englishAuctionContract.call('end', [], {caller: somebody});
-            let events = await englishAuctionContract.getPastEvents('End', {fromHeight: 0, toHeight: 0});
+            await englishAuctionContract.call('settle', [], {caller: somebody});
+            let events = await englishAuctionContract.getPastEvents('AuctionSettled', {fromHeight: 0, toHeight: 0});
             expect(events).to.be.an('array').with.length(1);
         });
     });
