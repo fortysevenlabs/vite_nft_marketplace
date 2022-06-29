@@ -1,24 +1,24 @@
-# Source
-Created from https://github.com/vitelabs/soliditypp-examples
+# NFT Marketplace Contracts
+Hackathon: GR 14 Hackathon (Vite Labs) https://gitcoin.co/issue/28944
 
-# soliditypp-examples
-Examples of Solidity++ 0.8.0 / 0.8.1.
-
-This is a preview version. DO NOT use it in production environment.
-# Getting Started
+# Running Tests
 ```
 npm install
 npm test
 ```
-# Test Environments
+# Features
 
-Open `test/vite.node.json` and edit `defaultNode` to switch test environment.
+- **Single Contract English Auction**:
+English bidding auction including vites test.
 
-- **Release Environment**:
-Contracts are deployed on local network running the release version of gvite.
+- **Single Contract Dutch Auction**:
+Dutch auction including vite test.
 
-- **Beta Environment**:
-Contracts are deployed on local network running the beta version of gvite.
+- **Marketplace contract**: 
+Combine which auction mode for your NFT
 
-- **Nightly Environment**: 
-Contracts are deployed on local network running the nightly version of gvite.
+- **GitHub actions**: 
+Test each PR before you merge
+
+- **Container Development in Visual Studio Code**: 
+Since some packages don't support win32, we suggested developing through docker
