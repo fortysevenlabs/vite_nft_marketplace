@@ -10,7 +10,7 @@
   "author": "charles@vite.org",
   "license": "ISC",
   "devDependencies": {
-    "@types/chai": "^4.2.21",
+    "@types/chai": "^4.3.1",
     "@types/chai-as-promised": "^7.1.5",
     "@types/chai-like": "^1.1.1",
     "@types/chai-things": "^0.0.35",
@@ -28,7 +28,8 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@vite/vuilder": "^0.1.0-alpha.12",
-    "@vite/solppc": "0.8.0-alpha.4"
+    "@vite/solppc": "0.8.0-alpha.4",
+    "@vite/vitejs": "^2.3.18",
+    "@vite/vuilder": "^0.1.0-alpha.12"
   }
 }
