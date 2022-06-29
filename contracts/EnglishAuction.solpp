@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+pragma soliditypp >=0.8.0;
+
+import "./openzeppelin/token/ERC721/IERC721.sol";
+import "./openzeppelin/security/ReentrancyGuard.sol";
+import "./openzeppelin/access/Ownable.sol";
+
+contract EnglishAuction is ReentrancyGuard {
+    event AuctionStarted();
+    event AuctionBid(address indexed sender, uint amount);
+    event AuctionSettled(address winner, uint amount);
+
+    // nft details
+    IERC721 public nft;
+    uint public nftId;
+
+    // auction time
+    uint public endTime;
+    uint public duration;
+
+    // bid details
+    uint public highestBid;
+    uint public minBidIncrementPercentage;
+    address public highestBidder;
+
+    // entities involved
+    address payable public seller;
+
+    // auction status
+    bool public started;
+    bool public settled;
+
+    constructor(
+        address _nft,
+        uint _nftId,
+        uint _reservePrice,
+        uint _minBidIncrementPercentage,
+        uint _duration
+    ) {
+        nft = IERC721(_nft);
+        nftId = _nftId;
+        seller = payable(msg.sender);
+        highestBid = _reservePrice;
+        minBidIncrementPercentage = _minBidIncrementPercentage;
+        duration = _duration;
+    }
+
+    /**
+     * @notice Start an english auction for the NFT
+     */
+    function start() external {
+        require(!started, "Auction has already started");
+        require(msg.sender == seller, "Auction must be started by seller");
+
+        nft.transferFrom(msg.sender, address(this), nftId);
+        started = true;
+        endTime = block.timestamp + duration;
+
+        emit AuctionStarted();
+    }
+
+
+    /**
+     * @notice Create a bid with a given amount
+     * @dev This contract only accepts payment in VITE token (tti_5649544520544f4b454e6e40)
+     */
+    function bid() external payable nonReentrant {
+        require(started, "Auction has not started");
+        require(block.timestamp < endTime, "Auction has ended");
+        require(
+            msg.value >= highestBid + ((highestBid * minBidIncrementPercentage) / 100),
+            "Must send more than last bid by minBidIncrementPercentage amount"
+        );
+
+        // Refund the previous highest bidder
+        address payable prevHighestBidder = payable(highestBidder);
+        uint prevHighestBid = highestBid;
+
+        if (prevHighestBidder != address(0)) {
+            prevHighestBidder.transfer("tti_5649544520544f4b454e6e40", prevHighestBid);
+        }
+
+        // Update the highest bidder
+        highestBidder = msg.sender;
+        highestBid = msg.value;
+
+        emit AuctionBid(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Settle an auction: transfer NFT to highestBidder and pay highestBid amount to seller
+     * @dev If there are no bids, transfer NFT back to seller
+     */
+    function settle() external nonReentrant {
+        require(started, "Auction has not started");
+        require(block.timestamp >= endTime, "Auction has not ended");
+        require(!settled, "Auction already settled");
+
+        settled = true;
+        if (highestBidder != address(0)) {
+            nft.safeTransferFrom(address(this), highestBidder, nftId);
+            seller.transfer("tti_5649544520544f4b454e6e40", highestBid);
+        } else {
+            nft.safeTransferFrom(address(this), seller, nftId);
+        }
+
+        emit AuctionSettled(highestBidder, highestBid);
+    }
+}
