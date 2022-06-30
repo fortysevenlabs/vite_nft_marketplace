@@ -1,0 +1,59 @@
+interface IMultiDutchAuction {
+	
+	// places a dutch auction if the user is the owner of the nft token
+    function placeAuction(address nftContract, uint256 tokenId, uint256 startingPrice, uint256 reservePrice, uint256 discountRate, uint256 discountBasePeriod, uint256 expirationTime, uint256 auctionRetractionTime) external;
+
+	// cancels an auction if 'isAuctionCancelable' assertments are positive
+    function cancelAuction(address nftContract, uint256 tokenId) external;
+
+	// allows auction cancelation if current time is below auctionRetractionTime
+	// or if auction expiration time reached and no bids exist
+    function isAuctionCancelable(address nftContract, uint256 tokenId) public view returns(bool);
+	
+	// registers a bid if current auction price is above sent ether value
+	// immediately completes the auction at auction price if bid is equal or higher than it
+	// returns previous highest bid holder his funds 
+    function placeBid(address nftContract, uint256 tokenId) external payable;
+	
+	// allows external execution of bid on an auction if a bid exists at or above bid price
+	// (placeBid function will only place a bid if value is lowers than "current price" at bid placement time
+	// therefore auction will execute at current bid value.
+	function executeAuction() external;
+
+	// allows bid cancelation if bid is below current auction price
+    function cancelBid(address nftContract, uint256 tokenId) external;
+	
+    function isBidCancelable(address nftContract, uint256 tokenId) public view returns(bool);
+
+    function calculateCurrentPrice(address nftContract, uint256 tokenId) public returns(uint256);
+	
+	function getStartingPrice(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getCreationTime(address nftContract, uint256 tokenId) external returns(uint256);
+
+    function getExpirationTime(address nftContract, uint256 tokenId) external returns(uint256);
+
+    function getHighestBid(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getHighestBid(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getReservePrice(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getDiscountRate(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getDiscountPeriod(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getHighestBidder(address nftContract, uint256 tokenId) external returns(address);
+ 
+	// allows users to asses future auction price at current block.time + time
+    function calculatePriceAtTime(address nftContract, uint256 tokenId, uint256 time) public returns(uint256);
+
+	// receive paginated array of active auctions
+    function getActiveAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+
+	// receive paginated array of cancelled auctions
+    function getCancelledAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+
+		// receive paginated array of finished (executed) auctions
+    function getFinishedAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+}

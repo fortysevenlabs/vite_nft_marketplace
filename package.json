@@ -1,13 +1,13 @@
 {
-  "name": "examples",
-  "version": "0.0.1",
-  "description": "",
+  "name": "nft-marketplace",
+  "version": "0.0.2",
+  "description": "A NFT marketplace build ontop of Vite",
   "main": "app.js",
   "scripts": {
     "test": "npx vuilder test --config test/vite.node.json",
     "run": "./node_modules/.bin/ts-node "
   },
-  "author": "charles@vite.org",
+  "author": "franz101 and fortylabs",
   "license": "ISC",
   "devDependencies": {
     "@types/chai": "^4.3.1",

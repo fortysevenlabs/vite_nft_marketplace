@@ -51,38 +51,49 @@ describe("test Dutchauction", function () {
 
     // mint
     await nftContract.call("mint", [deployer.address, nftId], {});
-  });
 
-  beforeEach(async function () {
-    // compile Dutch Auction contract
-
+    // compile contracts
     const compiledDutchAuctionContracts = await vite.compile(
-      "DutchAuction.solpp"
+      "SingleDutchAuction.solpp"
     );
 
-    expect(compiledDutchAuctionContracts).to.have.property("DutchAuction");
+    expect(compiledDutchAuctionContracts).to.have.property(
+      "SingleDutchAuction"
+    );
 
     // deploy an dutchAuction contract
-    dutchAuctionContract = compiledDutchAuctionContracts.DutchAuction;
+    dutchAuctionContract = compiledDutchAuctionContracts.SingleDutchAuction;
     dutchAuctionContract.setDeployer(deployer).setProvider(provider);
     const deployment = await dutchAuctionContract.deploy({
       params: [nftContract.address, nftId, startingBid, discountRate],
       responseLatency: 1,
     });
-    console.log("deployment");
-    console.log(deployment);
 
     expect(dutchAuctionContract.address).to.be.a("string");
     console.log("------> Dutch Auction Contract", dutchAuctionContract.address);
   });
 
-  describe("getPrice", function () {
-    context("give price of auction", function () {
-      it("returns the current auction price", async function () {
-        console.log(dutchAuctionContract.address);
-        const price = await dutchAuctionContract.query("getPrice", []);
-        console.log("PRICE", price);
-      });
+  describe("setup contract", () => {
+    it("create contracts", async function (done) {
+      // compile Dutch Auction contract
+
+      done();
+    });
+  });
+
+  // describe("getPrice", function () {
+  //   context("give price of auction", function () {
+  //     it("returns the current auction price", async function (done) {
+  //       const price = await dutchAuctionContract.query("getPrice", []);
+  //       console.log("GET PRICE", price);
+  //     });
+  //   });
+  describe("get auction price", function () {
+    console.log("start");
+    it("provide price of auction", async function () {
+      console.log(dutchAuctionContract.address);
+      await dutchAuctionContract.waitForHeight(1);
+      const price = await dutchAuctionContract.query("getPrice", []);
     });
   });
 });

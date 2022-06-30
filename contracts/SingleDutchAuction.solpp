@@ -3,10 +3,7 @@ pragma soliditypp >=0.8.0;
 
 import "./openzeppelin/token/ERC721/IERC721.sol";
 
-//taken from https://solidity-by-example.org/app/dutch-auction/
-//https://etherscan.io/address/0x1d0dcc8d8bcafa8e8502beaeef6cbd49d3affcdc#code
-//serves as boiler plate
-contract DutchAuction {
+contract SingleDutchAuction {
     uint private constant DURATION = 7 days;
 
     IERC721 public immutable nft;

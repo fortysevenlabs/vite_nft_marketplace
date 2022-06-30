@@ -27,12 +27,12 @@ const symbol = 'VITE';
 const nftId = 1010;
 
 describe('test EnglishAuction', function () {
-    before(async function () {
-        // provider and account setup
-        provider = vite.newProvider(config.networks.local.http);
-        deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider);
-        console.log("------> deployer", deployer.address);
-        console.log(await deployer.balance());
+before(async function () {
+// provider and account setup
+provider = vite.newProvider(config.networks.local.http);
+deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider);
+console.log("------> deployer", deployer.address);
+console.log(await deployer.balance());
 
         // user setup
         seller = vite.newAccount(config.networks.local.mnemonic, 1, provider);
@@ -80,11 +80,11 @@ describe('test EnglishAuction', function () {
     // note that mocha treats test failures and hook failures differently
     async function deployEnglishAuction(duration:number=86400, reservePrice:number=1, minBidIncrementPercentage:number=50) {
         // compile English Auction contract
-        const compiledEnglishAuctionContracts = await vite.compile("EnglishAuction.solpp");
-        expect(compiledEnglishAuctionContracts).to.have.property("EnglishAuction");
+        const compiledEnglishAuctionContracts = await vite.compile("SingleEnglishAuction.solpp");
+        expect(compiledEnglishAuctionContracts).to.have.property("SingleEnglishAuction");
 
         // deploy an englishAuction contract
-        englishAuctionContract = compiledEnglishAuctionContracts.EnglishAuction;
+        englishAuctionContract = compiledEnglishAuctionContracts.SingleEnglishAuction;
         englishAuctionContract.setDeployer(seller).setProvider(provider);
         await englishAuctionContract.deploy({ params: [nftContract.address, nftId, reservePrice, minBidIncrementPercentage, duration], responseLatency: 1 });
         expect(englishAuctionContract.address).to.be.a("string");
@@ -93,7 +93,7 @@ describe('test EnglishAuction', function () {
         return englishAuctionContract;
     }
 
-   describe("start", () => {
+describe("start", () => {
 
         it("should revert if auction is not started by seller", async () => {
             const englishAuctionContract = await deployEnglishAuction();
@@ -207,7 +207,8 @@ describe('test EnglishAuction', function () {
             let events = await englishAuctionContract.getPastEvents('AuctionBid', {fromHeight: 0, toHeight: 0});
             expect(events).to.be.an('array').with.length(1);
         });
-   });
+
+});
 
     describe("settle", () => {
         it("should revert if auction has not started", async () => {
@@ -300,4 +301,5 @@ describe('test EnglishAuction', function () {
             expect(events).to.be.an('array').with.length(1);
         });
     });
+
 });

@@ -1,0 +1,42 @@
+interface IMultiEnglishAuction {
+
+	// places an english auction if the user is the owner of the nft token
+    function placeAuction(address nftContract, uint256 tokenId, uint256 startingPrice, uint256 minimumBidIncrease, uint256 expirationTime, uint256 auctionRetractionTime) external;
+
+	// cancel auction if within specified auctionRetractionTime
+	// or if no bids are placed and block.time < expirationTime
+    function cancelAuction(address nftContract, uint256 tokenId) external;
+	
+	// execute auction if a bid exists (allowed by auction maker)
+	// execute auction if bid exists and auction time expired
+	function executeAuction(address nftContract, uint256 tokenId) external;
+
+	// can auction maker still cancel it, (set by auctionRetractionTime)
+	// or if no bids are placed and block.time < expirationTime
+    function isAuctionCancelable(address nftContract, uint256 tokenId) public view returns(bool);
+	
+	// places bid if bid value is above current bid
+    function placeBid(address nftContract, uint256 tokenId) external payable;
+
+	// receive an auction's current bid
+    function getCurrentBid(address nftContract, uint256 tokenId) public returns(uint256);
+
+	function getStartingPrice(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getMinimumBidIncrease(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getCreationTime(address nftContract, uint256 tokenId) external returns(uint256);
+
+    function getExpirationTime(address nftContract, uint256 tokenId) external returns(uint256);
+	
+	function getAuctionRetractionTime(address nftContract, uint256 tokenId) external returns(uint256);
+
+	// receive paginated array of active auctions
+    function getActiveAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+
+	// receive paginated array of cancelled auctions
+    function getCancelledAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+
+	// receive paginated array of finished(executed) auctions
+    function getFinishedAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory);
+}
