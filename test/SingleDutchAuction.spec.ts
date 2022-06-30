@@ -93,7 +93,7 @@ describe("test Dutchauction", function () {
     it("provide price of auction", async function () {
       console.log(dutchAuctionContract.address);
       await dutchAuctionContract.waitForHeight(1);
-      const price = await dutchAuctionContract.query("getPrice", []);
+      // const price = await dutchAuctionContract.query("getPrice", []);
     });
   });
 });
