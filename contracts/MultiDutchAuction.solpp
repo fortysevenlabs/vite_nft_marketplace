@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma soliditypp >=0.8.0;
+
+import "./openzeppelin/token/ERC721/IERC721.sol";
+
+ 
+contract DutchAuction {
+
+    uint256 immutable public MAXIMUM_AUCTION_DURATION;
+
+    struct auction {
+    address payable seller;
+
+    uint256 startingPrice;  // block.time + seconds for auction start
+    uint256 reservePrice;            // lowest price
+    uint256 discountRate;           // price decrease rate in wei
+    uint256 discountPeriod;    // time period to apply discount value in wei
+    uint256 creationTime;          // block.time
+
+    uint256 auctionRetractionTime;    // allow auction maker to subtract bid by creationTime+auctionRetractionTime
+    uint256 expirationTime;          // seconds for auction expiration since creationTime (block.time)
+
+
+    address highestBidder;  // highestBidder
+    uint256 highestBid;     // highestBid
+
+    uint256 auctionCompleteTime;
+
+    bool active;             // 0 - inactive,    1 - active
+    }
+
+    mapping(address => mapping(uint256 => bid)) auctions; // nft contract address => nftID => bid struct
+
+    struct activeAuctionKeys{
+        address nftContract;
+        uint256 tokenId;
+    }
+
+    activeAuctionKeys[] activeAuctions; // auction creation paginated auction keys
+
+    auction[] cancelledAuctions;    // auction cancelation time paginated
+
+    auctionp[] executedAuctions;    // auction execution time paginated
+
+    mapping(bytes4 => bool) internal supportedInterfaces;
+
+    constructor(uint256 MAXIMUM_AUCTION_DURATION_){
+        MAXIMUM_AUCTION_DURATION = MAXIMUM_AUCTION_DURATION_;
+        _registerInterface(bytes4(keccak256('supportsInterface(bytes4)')));
+        _registerInterface(bytes4(keccak256("onERC721Received(address,address,uint256,bytes)")));
+    }
+
+
+    function placeAuction(address nftContract, uint256 tokenId, uint256 startingPrice, uint256 reservePrice, uint256 discountRate, uint256 discountPeriod, uint256 expirationTime, bool allowAuctionRetraction) external {
+            require(msg.sender == IERC721(nftContract).ownerOf(tokenId), "only owner can setup");
+            require(nftAuthorized for transfer....) //todo
+
+            require(startingPrice > reservePrice);
+            require(MAXIMUM_AUCTION_DURATION > expirationTime);
+
+    }
+
+	// cancels an auction if 'isAuctionCancelable' assertments are positive
+    function cancelAuction(address nftContract, uint256 tokenId) external {
+
+    }
+
+
+    	// allows auction cancelation if current time is below auctionRetractionTime
+	// or if auction expiration time reached and no bids exist
+    function isAuctionCancelable(address nftContract, uint256 tokenId) public view returns(bool) {
+        auction memory auc = auction[address nftContract][tokenId];
+        require(auc.active, "invalid - inactive auction");
+        if((auc.auctionRetractionTime > block.time) || (block.time >auc.expirationTime )){
+            return true;
+        }
+        return false;
+    }
+
+
+	// registers a bid if current auction price is above sent ether value
+	// immediately completes the auction at auction price if bid is equal or higher than it
+    function placeBid(address nftContract, uint256 tokenId) external payable{
+            require(auction[nftContract][tokenId].active, "inactive auction, reverting");
+            require(msg.value > auction[nftContract][tokenId].highestBid, "value is lower than highest bid, reverting");
+
+    }
+
+
+	// allows bid cancelation if bid is below current auction price
+    function cancelBid(address nftContract, uint256 tokenId) external {
+        if()
+    }
+
+    function isBidCancelable(address nftContract, uint256 tokenId) public view returns(bool) {
+
+    }
+
+    function calculateCurrentPrice(address nftContract, uint256 tokenId) public returns(uint256) {
+        return calculatePriceAtTime(nftContract, tokenId, block.time);
+
+    }
+
+    // calculate dutch auction price for Time T from current block.time
+    function calculatePriceAtTime(address nftContract, uint256 tokenId, uint256 time) public returns(uint256) {
+        auction memory auc = auction[address nftContract][tokenId];
+        require(time > auc.creationTime, "input a future time from auction creation");
+        uint256 currentPrice = auc.startingPrice - (((time - auc.creationTime) / auc.discountPeriod) * auc.discountRate);
+        return discountPrice > auc.reservePrice ? discountPrice : auc.reservePrice;
+    }
+
+
+
+    function getCreationTime(address nftContract, uint256 tokenId) external returns(uint256) {
+        return auction
+    }
+
+    function getExpirationTime(address nftContract, uint256 tokenId) external returns(uint256) {
+
+    }
+
+    function getHighestBid(address nftContract, uint256 tokenId) external returns(uint256) {
+
+    }
+
+
+    	// receive paginated array of active auctions
+    function getActiveAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory) {
+
+    }
+
+	// receive paginated array of cancelled auctions
+    function getCancelledAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory) {
+
+    }
+
+		// receive paginated array of finished (executed) auctions
+    function getFinishedAuctions(uint256 fromAuction, uint256 howMany) external returns(auction[] memory) {
+
+    }
+
+
+    function onERC721Received(address _operator, address _from, uint256 _tokenId, bytes _data) external returns(bytes4) {
+      if (data.length == 0) {
+            return this.onERC721Received.selector;
+        }
+                bytes4 selector = bytes4(data[:4]);
+        require(
+            selector == this.placeBid.selector,
+            "Wrong selector"
+        );
+              (bool success, ) = address(this).call(data);
+        require(success, "Unsuccessfull bid placement");
+
+        return this.onERC721Received.selector;
+
+    }
+
+    function _registerInterface(bytes4 _interfaceId) internal {
+        require(_interfaceId != 0xffffffff);
+        supportedInterfaces[_interfaceId] = true;
+    }
+
+    function supportsInterface(bytes4 interfaceID)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return supportedInterfaces[interfaceID];
+    }
+}
+
+
